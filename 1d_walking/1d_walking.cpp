@@ -17,19 +17,18 @@ std::pair<int,int> exec_runs(int runs, int pos_f){
     for(int i=0; i<runs; i++){
         int ticks=0, pos=0;
         while(pos!=pos_f){
-            double p_forward=0.5+0.05*pos;
-            p_forward=std::min(p_forward,0.9);
+            double prob_forward=0.5+0.05*pos;
+            prob_forward=std::min(prob_forward,0.9);
 
             if(move(rng)){
-                bool forward=(std::generate_canonical<double,10>(rng)<p_forward);
+                bool forward=(std::generate_canonical<double,10>(rng)<prob_forward);
                 int velocity=forward?+1:-1;
                 pos+=velocity;
             }
             ticks++;
 
             if(pos<0 && ticks<pos_f*0.2){
-                nok++;
-                break;
+                double prob_die=1-exp(abs(pos)*ticks);
             }
         }
         if(pos==pos_f){ok++;}
