@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cmath>
 
+
 struct Simulate_Stats {
     int ok = 0;
     int nok = 0;
