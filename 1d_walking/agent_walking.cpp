@@ -10,9 +10,9 @@ struct Agent{
     int pos;
     int age;
     bool alive;
-    // bool sucess;
+    bool finished;
 
-    void move(double p_forward, std::mt19937 rng){
+    void move(double p_forward, std::mt19937& rng){
         std::bernoulli_distribution move(0.5);
         if(move(rng)){
             bool forward = (std::generate_canonical<double,10>(rng)<p_forward);
@@ -24,7 +24,7 @@ struct Agent{
         age = tick/100;
     }
 
-    void try_die(std::mt19937 rng){
+    void try_die(std::mt19937& rng){
         double prob_die = 1-std::exp(-age*0.095);
         if(std::generate_canonical<double, 10>(rng)<prob_die){
             alive = false;
@@ -38,7 +38,7 @@ struct World {
 
     Agent agent;
 
-    void step(std::mt19937 rng){
+    void step(std::mt19937& rng){
         agent.move(std::min((0.5+0.05*agent.pos), 0.9), rng);
         tick++;
         agent.age_up(tick);
