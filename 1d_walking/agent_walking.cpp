@@ -117,14 +117,18 @@ struct World {
     Stats stats;
 
     void step(std::mt19937& rng) {
+        int next_check=100;
         for(size_t i=0; i<active_ids.size(); ){
             Agent& agent = agents[active_ids[i]];
 
             double p_forward = std::min(0.5 + 0.05 * agent.pos, 0.9);
             agent.move(p_forward, rng);
 
-            agent.age_up(tick);
-            bool died = agent.try_die(rng, tick);
+            if(next_check==100 || tick>=next_check){
+                agent.age_up(tick);
+                bool died = agent.try_die(rng, tick);
+                if(died){stats.on_death(agent, tick);}
+            }
             bool finished = false;
 
             if(agent.pos>=pos_f){
@@ -132,7 +136,6 @@ struct World {
                 finished = true;
             }
 
-            if(died){stats.on_death(agent, tick);}
             if(finished){stats.on_finish(agent, tick);}
             
             if(!agent.active()){
