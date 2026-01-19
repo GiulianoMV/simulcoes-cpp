@@ -5,9 +5,9 @@
 #include <cmath>
 #include <numeric>
 #include <iomanip>
-#include <map>
 #include <algorithm>
 #include <chrono>
+#include <unordered_map>
 
 
 struct Agent {
@@ -43,12 +43,18 @@ struct Agent {
     bool try_die(std::mt19937& rng, int tick) {
         if (tick%100!=0) return false;
         
-        double alpha = 0.0001;
-        double beta = 0.08;
+        constexpr double alpha = 0.0001;
+        constexpr double beta = 0.08;
 
-        double hazard = alpha * std::exp(beta * age);
-        double prob_die = 1.0 - std::exp(-hazard);
+        static std::vector<double> gompertz_cache;
+        if(age>=gompertz_cache.size()){
+            for(int a=gompertz_cache.size(); a<=age; ++a){
+                double hazard = alpha*std::exp(beta*age);
+                gompertz_cache.push_back(1.0-std::exp(-hazard));
+            }
+        }
 
+        double prob_die = gompertz_cache[age];
         if (std::generate_canonical<double, 10>(rng) < prob_die) {
             state = AgentState::Dead;
             return true;
@@ -79,18 +85,16 @@ struct Stats{
         time_dead.push_back(tick);
     };
 
-    double mean(std::vector<int> data){
+    double mean(std::vector<int>& data){
         double sum = std::accumulate(std::begin(data), std::end(data), 0.0);
         double mean = sum/std::size(data);
         return mean;
     };
 
-    int moda(std::vector<int> data){
-        std::map<int,int>contagem;
+    int moda(std::vector<int>& data){
+        std::unordered_map<int, int>contagem;
 
-        for(int num:data){
-            contagem[num]++;
-        }
+        for(int num:data){contagem[num]++;}
 
         int moda = -1;
         int max_freq=0;
@@ -108,25 +112,34 @@ struct World {
     int pos_f;
     int tick;
 
+    std::vector<int> active_ids;
     std::vector<Agent> agents;
     Stats stats;
 
     void step(std::mt19937& rng) {
-        for (auto& agent:agents) {
-            if (!agent.active())
-                continue;
+        for(size_t i=0; i<active_ids.size(); ){
+            Agent& agent = agents[active_ids[i]];
 
             double p_forward = std::min(0.5 + 0.05 * agent.pos, 0.9);
             agent.move(p_forward, rng);
 
             agent.age_up(tick);
-            if(agent.try_die(rng, tick)){
-                stats.on_death(agent, tick);
+            bool died = agent.try_die(rng, tick);
+            bool finished = false;
+
+            if(agent.pos>=pos_f){
+                agent.state = Agent::AgentState::Finished;
+                finished = true;
             }
 
-            if(agent.pos >= pos_f) {
-                agent.state = Agent::AgentState::Finished;
-                stats.on_finish(agent, tick);
+            if(died){stats.on_death(agent, tick);}
+            if(finished){stats.on_finish(agent, tick);}
+            
+            if(!agent.active()){
+                active_ids[i] = active_ids.back();
+                active_ids.pop_back();
+            } else {
+                ++i;
             }
         }
         tick++;
@@ -179,6 +192,7 @@ int main() {
                 .state = Agent::AgentState::Alive
             }
         );
+        world.active_ids.push_back(i);
     }
 
     while (!world.finished()) {
