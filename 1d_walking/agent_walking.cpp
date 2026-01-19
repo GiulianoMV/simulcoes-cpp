@@ -87,7 +87,7 @@ struct Stats{
 
     int moda(std::vector<int> data){
         std::map<int,int>contagem;
-        
+
         for(int num:data){
             contagem[num]++;
         }
